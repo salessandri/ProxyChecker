@@ -2,17 +2,15 @@
 import urllib2
 
 
-class Proxy(Object):
+class Proxy(object):
     
-    self.ip = None
-    self.port = None
-    self.https = None
-    self.transparency = None
-    self.responsiveness = None
-    
-    def __init__(self, ip, port):
+    def __init__(self, ip, port, https=None, transparency=None, responsiveness=None, last_checked=None):
         self.ip = ip
         self.port = port
+        self.https = https
+        self.transparency = transparency
+        self.responsiveness = responsiveness
+        self.last_checked = last_checked
     
     def __str__(self):
         return str(self.ip) + ":" + str(self.port)

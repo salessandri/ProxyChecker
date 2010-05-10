@@ -4,6 +4,7 @@ import urllib2
 import re
 from xml.dom.minidom import parseString
 from datetime import datetime
+from collections import deque
 from Proxy import Proxy
 
 ip_re = re.compile('((\d{1,2}|1\d{2}|2[0-4][0-9]|25[0-5])\.(\d{1,2}|1\d{2}|2[0-4][0-9]|25[0-5])\.(\d{1,2}|1\d{2}|2[0-4][0-9]|25[0-5])\.(\d{1,2}|1\d{2}|2[0-4][0-9]|25[0-5]))')
@@ -20,11 +21,10 @@ white_list_headers = set(['HTTP_X_FORWARD', 'HTTP_FORWARDED', 'HTTP_CLIENT_IP',
 
 brown_list_headers = set(['MAX-FORWARDS'])
 
-class ProxyCheckerCore(Object):
+class ProxyCheckerCore(object):
     
     
-    def __init__(self, db, server_url, timeout=15, max_responsivness=15000):
-        self._db = db
+    def __init__(self, server_url=None, timeout=15, max_responsivness=15000):
         self._server_url = server_url
         self._timeout = timeout
         self._max_responsiveness = max_responsivness
@@ -32,28 +32,36 @@ class ProxyCheckerCore(Object):
     def check_proxies(self, proxy_list):
         self._total = len(proxy_list)
         self._running_semaphore = threading.Semaphore(value=0)
+        self._mutex = threading.Lock()
+        result_list = deque()
         for ip, port in proxy_list:
             th = threading.Thread(target=self._check_proxy,
                                   kwargs={
                                     'ip':ip,
                                     'port':port,
-                                    'total':self._total,
-                                    'semaphore':self._running_semaphore,
+                                    'result':result_list,
                                     })
             th.start()
         
         self._running_semaphore.acquire()
-        print "Checking all the proxies is finished!"
+        
+        return result_list
     
-    
-    def _check_proxy(self, ip, port, total=None, semaphore=None):
+    def _check_proxy(self, ip, port, result):
         
         proxy = Proxy(ip, port)
         self._evaluate_responsiveness(proxy)
         if proxy.responsiveness < self._max_responsiveness:
             self._evaluate_transparency(proxy)
+        proxy.last_checked = str(datetime.now())
+        result.append(proxy)
         
+        with self._mutex:
+            self._total -= 1
+            if total == 0:
+                self._running_semaphore.release()
         
+        return
     
     def _evaluate_responsiveness(self, proxy):
         time_amount = 0
@@ -67,7 +75,7 @@ class ProxyCheckerCore(Object):
             except urllib2.URLError, e:
                 time_amount += (self._timeout + 5) * 1000
         time_amount /= len(ping_pages)
-        proxy.responsiveness = timeAmount
+        proxy.responsiveness = time_amount
     
     def _evaluate_transparency(self, proxy):
         

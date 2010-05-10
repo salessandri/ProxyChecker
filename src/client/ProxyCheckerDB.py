@@ -3,7 +3,7 @@
 from ProxyCheckerCore import ProxyCheckerCore
 from Proxy import Proxy
 
-class ProxyCheckerDB(Object):
+class ProxyCheckerDB(object):
     
     def __init__(self, db, server_url, timeout=15, max_responsivness=15000):
         self._db = db
@@ -38,15 +38,17 @@ class ProxyCheckerDB(Object):
     
     def get_proxies(self, **kwargs):
         
+        where_clause = kwargs.get('where_clause', None)
+        sort_clause = kwargs.get('sort_clause', None)
+        limit_clause = kwargs.get('limit_clause', None)
+        
         query = "SELECT ip, port, responsiveness, transparency, last_checked FROM proxy "
-        if len(kwargs):
-            query += "WHERE "
-            for key in kwargs:
-                if isinstance(kwargs[key], str):
-                    query += "%s LIKE '\%%s\%' AND " % (key, kwargs[key])
-                else:
-                    query += "%s = %d AND " % (key, kwargs[key])
-            query = query[:-4]
+        if where_clause:
+            query += "WHERE " + ' AND '.join(where_clause) + ' '
+        if sort_clause:
+            query += "ORDER BY %s " % (sort_clause,)
+        if limit_clause:
+            query += "LIMIT %d" % (limit_clause,)
         
         con = sqlite.connect(self._db)
         cursor = con.cursor()
@@ -54,5 +56,16 @@ class ProxyCheckerDB(Object):
         results = cursor.fetchall()
         proxy_list = []
         for proxy in results:
-            proxy_list.append(Proxy(proxy[0], proxy[1], last_checked=proxy[2], transparency=proxy[3], responsiveness=proxy[4])
+            proxy_list.append(Proxy(proxy[0], proxy[1], last_checked=proxy[2], transparency=proxy[3], responsiveness=proxy[4]))
+        
+        return proxy_list
+    
+    def install_db(self):
+        con = sqlite.connect(self._db)
+        cur = con.cursor()
+        cur.execute("""CREATE TABLE proxy (id INTEGER PRIMARY KEY, ip VARCHAR[20], port INTEGER, responsiveness INTEGER, transparency INTEGER, last_checked VARCHAR[120])""")
+        con.commit()
+        con.close()
+        return
+    
     
