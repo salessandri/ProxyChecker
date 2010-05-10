@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
+from sqlite3 import dbapi2 as sqlite
 from ProxyCheckerCore import ProxyCheckerCore
 from Proxy import Proxy
 
 class ProxyCheckerDB(object):
     
-    def __init__(self, db, server_url, timeout=15, max_responsivness=15000):
+    def __init__(self, db, server_url=None, timeout=15, max_responsivness=15000):
         self._db = db
         self._server_url = server_url
         self._timeout = timeout

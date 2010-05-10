@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import sys
+import os
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 from ProxyCheckerDB import ProxyCheckerDB
 
 def __parse_args(*args):
@@ -9,7 +11,10 @@ def __parse_args(*args):
     sort_clause = None
     limit_clause = None
     db = None
+    server_url = None
+    plugin_list = []
     
+    args = list(args)
     while args:
         arg = args.pop(0)
         if arg == "-ip":
@@ -50,10 +55,15 @@ def __parse_args(*args):
             sort_clause = args.pop(0)
         elif arg == '-limit':
             limit_clause = int(args.pop(0))
-        else:
-            db = arg
+        elif arg == '-db':
+            db = args.pop(0)
+        elif arg == '-url':
+            server_url = args.pop(0)
+        elif arg == '-pl':
+            plugin_list.extend(args.pop(0).split(','))
+        
     
-    return db, where_clause, sort_clause, limit_clause
+    return locals()
 
 def install(*args):
     
@@ -73,7 +83,7 @@ def install(*args):
 def show(*args):
     
     def help():
-        return sys.argv[0] + """ show [options] <dabatase_name>
+        return sys.argv[0] + """ show [options] -db <dabatase_name>
         
         Shows the different proxies stored in the database. Options are used to
         restrict the showed proxies.
@@ -97,24 +107,24 @@ def show(*args):
         print help()
         exit(0)
     
-    db, where_clause, sort_clause, limit_clause = __parse_args(*args)
+    parsed_args = __parse_args(*args)
     
-    if db == None:
+    if parsed_args['db'] == None:
         print "No database selected!"
         exit(1)
     
-    proxy_checker = ProxyCheckerDB(db)
+    proxy_checker = ProxyCheckerDB(parsed_args['db'])
     
-    proxy_list = proxy_checker.get_proxies(where_clause=where_clause,
-                                           sort_clause=sort_clause,
-                                           limit_clause=limit_clause)
+    proxy_list = proxy_checker.get_proxies(where_clause=parsed_args['where_clause'],
+                                           sort_clause=parsed_args['sort_clause'],
+                                           limit_clause=parsed_args['limit_clause'])
     
     __printResults(proxy_list)
     exit(0)
 
 def update(*args):
     def help():
-        return sys.argv[0] + """ update [options] <dabatase_name>
+        return sys.argv[0] + """ update [options] -db <dabatase_name> -url <server_url>
         
         Updates the different proxies stored in the database. Options are used to
         restrict the proxies to update.
@@ -138,22 +148,58 @@ def update(*args):
         print help()
         exit(0)
     
-    db, where_clause, sort_clause, limit_clause = __parse_args(*args)
+    pased_args = __parse_args(*args)
     
-    if db == None:
+    if parsed_args['db'] == None:
         print "No database selected!"
         exit(1)
     
-    proxy_checker = ProxyCheckerDB(db)
+    if parsed_args['server_url'] == None:
+        print "No server's url selected!"
+        exit(1)
     
-    proxy_list = proxy_checker.get_proxies(where_clause=where_clause,
-                                           sort_clause=sort_clause,
-                                           limit_clause=limit_clause)
+    proxy_checker = ProxyCheckerDB(parsed_args['db'], parsed_args['server_url'])
+    
+    proxy_list = proxy_checker.get_proxies(where_clause=parsed_args['where_clause'],
+                                           sort_clause=parsed_args['sort_clause'],
+                                           limit_clause=parsed_args['limit_clause'])
     
     print "Starting checking..."
     proxy_checker.check_proxies(proxy_list)
     print "Checking Done"
     exit(0)
+
+def run(*args):
+    
+    def help():
+        return sys.argv[0] + """ run -pl <plugin_name>,... -db <dabatase_name> -url <server_url>
+        
+        """
+    
+    if "-h" in args or "--help" in args:
+        print help()
+        exit(0)
+    
+    pased_args = __parse_args(*args)
+    
+    if parsed_args['db'] == None:
+        print "No database selected!"
+        exit(1)
+    
+    if parsed_args['server_url'] == None:
+        print "No server's url selected!"
+        exit(1)
+        
+    proxy_checker = ProxyCheckerDB(parsed_args['db'], parsed_args['server_url'])
+    
+    for plugin_name in parsed_args['plugin_list']:
+        try:
+            module = __import__('plugin.' + plugin_name)
+        except Exception,e:
+            print e
+            exit(2)
+        plugin = getattr(module, plugin_name)(proxy_checker)
+        plugin.start()
     
 
 def __printResults(proxies):
@@ -171,9 +217,10 @@ def help():
         return sys.argv[0] + " action [params]"
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2 or '-h' in sys.argv or '--help' in sys.argv:
+    print globals()
+    if len(sys.argv) < 2 or '-h' == sys.argv[1] or '--help' == sys.argv[1]:
         print help()
         exit(0)
-    globals.__getattr__(sys.argv[1], sys.argv[2:])
+    globals().get(sys.argv[1])(sys.argv[2:])
     
     

@@ -24,7 +24,7 @@ brown_list_headers = set(['MAX-FORWARDS'])
 class ProxyCheckerCore(object):
     
     
-    def __init__(self, server_url=None, timeout=15, max_responsivness=15000):
+    def __init__(self, server_url, timeout=15, max_responsivness=15000):
         self._server_url = server_url
         self._timeout = timeout
         self._max_responsiveness = max_responsivness
