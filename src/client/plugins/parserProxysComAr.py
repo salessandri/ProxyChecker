@@ -8,7 +8,7 @@ from Proxy import Proxy
 proxy_pattern = re.compile("<td>(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})</td>\n\s*<td>(\d{1,5})</td>")
 page_request_base = "http://www.proxys.com.ar/index.php?act=list&page=%i"
 user_agent = "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.4) Gecko/2008102920 Firefox/3.0.4"
-headers = { 'User-Agent' : userAgent }
+headers = { 'User-Agent' : user_agent }
 
 class parserProxysComAr():
     

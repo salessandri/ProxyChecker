@@ -180,7 +180,7 @@ def run(*args):
         print help()
         exit(0)
     
-    pased_args = __parse_args(*args)
+    parsed_args = __parse_args(*args)
     
     if parsed_args['db'] == None:
         print "No database selected!"
@@ -194,10 +194,12 @@ def run(*args):
     
     for plugin_name in parsed_args['plugin_list']:
         try:
-            module = __import__('plugin.' + plugin_name)
+            print 'plugins.' + plugin_name
+            module = __import__('plugins.' + plugin_name)
         except Exception,e:
             print e
             exit(2)
+        print module
         plugin = getattr(module, plugin_name)(proxy_checker)
         plugin.start()
     
@@ -217,10 +219,9 @@ def help():
         return sys.argv[0] + " action [params]"
 
 if __name__ == '__main__':
-    print globals()
     if len(sys.argv) < 2 or '-h' == sys.argv[1] or '--help' == sys.argv[1]:
         print help()
         exit(0)
-    globals().get(sys.argv[1])(sys.argv[2:])
+    globals().get(sys.argv[1])(*sys.argv[2:])
     
     
