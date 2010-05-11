@@ -18,8 +18,8 @@ class Proxy(object):
     def open(self, url, headers={}, timeout=None):
         handler = urllib2.ProxyHandler({'http': '%s:%s' % (self.ip, self.port,)})
         opener = urllib2.build_opener(handler)
-        req = urllib2.Request(webpage, headers=headers)
-        page = opener.open(req, timeout)
+        req = urllib2.Request(url, headers=headers)
+        page = opener.open(req, timeout=timeout)
         return page
         
     

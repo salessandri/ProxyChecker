@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
+from datetime import datetime
 from sqlite3 import dbapi2 as sqlite
 from ProxyCheckerCore import ProxyCheckerCore
 from Proxy import Proxy
+
 
 class ProxyCheckerDB(object):
     
@@ -23,16 +25,17 @@ class ProxyCheckerDB(object):
                         FROM proxy
                         WHERE ip = '%s' AND port = %d """ % (proxy.ip, proxy.port)
             resp = cursor.execute(query)
-            if resp:
+            if resp.rowcount != -1:
                 query = """UPDATE proxy
-                            SET transparency = %s,
-                            responsiveness = %s,
+                            SET transparency = %d,
+                            responsiveness = %d,
                             last_checked = '%s'
                             WHERE ip = '%s' AND
                             port = %d""" % (proxy.transparency, proxy.responsiveness, str(datetime.now()), proxy.ip, proxy.port)
             else:
                 query = """INSERT INTO proxy (ip, port, last_checked, transparency, responsiveness)
-                                    VALUES ('%s', %s, '%s', %s, %s) """ % (proxy.ip, proxy.port, proxy.last_checked, proxy.transparency, proxy.responsiveness)
+                                    VALUES ('%s', %d, '%s', %d, %d) """ % (proxy.ip, proxy.port, str(datetime.now()), proxy.transparency, proxy.responsiveness)
+            
             cursor.execute(query)
         con.commit()
         con.close()
@@ -51,15 +54,37 @@ class ProxyCheckerDB(object):
         if limit_clause:
             query += "LIMIT %d" % (limit_clause,)
         
+        
         con = sqlite.connect(self._db)
         cursor = con.cursor()
         cursor.execute(query)
         results = cursor.fetchall()
         proxy_list = []
         for proxy in results:
-            proxy_list.append(Proxy(proxy[0], proxy[1], last_checked=proxy[2], transparency=proxy[3], responsiveness=proxy[4]))
+            proxy_list.append(Proxy(proxy[0], proxy[1], last_checked=proxy[4], transparency=proxy[3], responsiveness=proxy[2]))
         
         return proxy_list
+    
+    def delete_proxies(self, **kwargs):
+        
+        where_clause = kwargs.get('where_clause', None)
+        sort_clause = kwargs.get('sort_clause', None)
+        limit_clause = kwargs.get('limit_clause', None)
+        
+        query = "DELETE FROM proxy "
+        if where_clause:
+            query += "WHERE " + ' AND '.join(where_clause) + ' '
+        if sort_clause:
+            query += "ORDER BY %s " % (sort_clause,)
+        if limit_clause:
+            query += "LIMIT %d" % (limit_clause,)
+        
+        
+        con = sqlite.connect(self._db)
+        cursor = con.cursor()
+        cursor.execute(query)
+        con.commit()
+        con.close()
     
     def install_db(self):
         con = sqlite.connect(self._db)

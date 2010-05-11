@@ -3,18 +3,10 @@
 import sys
 import BaseHTTPServer
 
-base_response = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-        
-        <html>
-        <head>
-        <title>WORKED!</title>
-        </head>
+base_response = """
         <div>
         %s
-        </div>
-        <body>
-        </body>
-        </html>"""
+        </div>"""
 
 class ProxyCheckerRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     
@@ -25,7 +17,7 @@ class ProxyCheckerRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         for item in self.headers.dict.keys():
             response_dict[item] = self.headers.dict[item]
         self.send_response(200)
-        self.send_header("Content-type", "text/html")
+        self.send_header("Content-type", "text/plain")
         self.end_headers(  )
         string_response_dict = ""
         for item in response_dict.keys():

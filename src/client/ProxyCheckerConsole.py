@@ -4,6 +4,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 from ProxyCheckerDB import ProxyCheckerDB
+from Proxy import Proxy
 
 def __parse_args(*args):
     
@@ -13,6 +14,7 @@ def __parse_args(*args):
     db = None
     server_url = None
     plugin_list = []
+    not_filtered = []
     
     args = list(args)
     while args:
@@ -33,24 +35,24 @@ def __parse_args(*args):
             comp = args.pop(0)
             value = int(args.pop(0))
             if comp == 'eq':
-                where_clause.append("transparency = %d" (value,))
+                where_clause.append("transparency = %d" % (value,))
             elif comp == 'ne':
-                where_clause.append("transparency <> %d" (value,))
+                where_clause.append("transparency <> %d" % (value,))
             elif comp == 'le':
-                where_clause.append("transparency <= %d" (value,))
+                where_clause.append("transparency <= %d" % (value,))
             elif comp == 'ge':
-                where_clause.append("transparency >= %d" (value,))
+                where_clause.append("transparency >= %d" % (value,))
         elif arg == '-re':
             comp = args.pop(0)
             value = int(args.pop(0))
             if comp == 'eq':
-                where_clause.append("responsiveness = %d" (value,))
+                where_clause.append("responsiveness = %d" % (value,))
             elif comp == 'ne':
-                where_clause.append("responsiveness <> %d" (value,))
+                where_clause.append("responsiveness <> %d" % (value,))
             elif comp == 'le':
-                where_clause.append("responsiveness <= %d" (value,))
+                where_clause.append("responsiveness <= %d" % (value,))
             elif comp == 'ge':
-                where_clause.append("responsiveness >= %d" (value,))
+                where_clause.append("responsiveness >= %d" % (value,))
         elif arg == '-sort':
             sort_clause = args.pop(0)
         elif arg == '-limit':
@@ -61,6 +63,8 @@ def __parse_args(*args):
             server_url = args.pop(0)
         elif arg == '-pl':
             plugin_list.extend(args.pop(0).split(','))
+        else:
+            not_filtered.append(arg)
         
     
     return locals()
@@ -118,6 +122,7 @@ def show(*args):
     proxy_list = proxy_checker.get_proxies(where_clause=parsed_args['where_clause'],
                                            sort_clause=parsed_args['sort_clause'],
                                            limit_clause=parsed_args['limit_clause'])
+    
     
     __printResults(proxy_list)
     exit(0)
@@ -195,13 +200,52 @@ def run(*args):
     for plugin_name in parsed_args['plugin_list']:
         try:
             print 'plugins.' + plugin_name
-            module = __import__('plugins.' + plugin_name)
+            module = __import__('plugins.' + plugin_name, fromlist=['plugins'])
         except Exception,e:
             print e
             exit(2)
         print module
         plugin = getattr(module, plugin_name)(proxy_checker)
         plugin.start()
+
+def delete(*args):
+    
+    parsed_args = __parse_args(*args)
+    
+    if parsed_args['db'] == None:
+        print "No database selected!"
+        exit(1)
+        
+    proxy_checker = ProxyCheckerDB(parsed_args['db'])
+    
+    proxy_checker.delete_proxies(where_clause=parsed_args['where_clause'],
+                                 sort_clause=parsed_args['sort_clause'],
+                                 limit_clause=parsed_args['limit_clause'])
+    
+    print "Deleting proxies done!"
+    
+
+def add(*args):
+    
+    parsed_args = __parse_args(*args)
+    
+    if parsed_args['db'] == None:
+        print "No database selected!"
+        exit(1)
+    
+    if parsed_args['server_url'] == None:
+        print "No server's url selected!"
+        exit(1)
+        
+    proxy_checker = ProxyCheckerDB(parsed_args['db'], parsed_args['server_url'])
+    
+    proxy_list = []
+    for arg in parsed_args['not_filtered']:
+        ip, port = arg.split(':')
+        port = int(port)
+        proxy_list.append(Proxy(ip, port))
+    
+    proxy_checker.check_proxies(proxy_list)
     
 
 def __printResults(proxies):
@@ -209,9 +253,9 @@ def __printResults(proxies):
         print "|      Proxy       |  Port  |  Resp. | Tra.|       Last Checked         |"
         for proxy in proxies:
             print "| %16s | %5d  | %6d | %3d | %16s |" % (proxy.ip,
-                                                          proxy.port,
-                                                          proxy.responsivness,
-                                                          proxy.transparency,
+                                                          int(proxy.port),
+                                                          int(proxy.responsiveness),
+                                                          int(proxy.transparency),
                                                           proxy.last_checked)
         print "=" * 73
 
